@@ -71,19 +71,25 @@ interface FileEntry {
 
 ### 3.3 /api/read 响应
 
-服务端仅返回 `'text' | 'image' | 'binary'` 三种底层类型；客户端在此基础上根据 `FileEntry.ext` 进一步细分为 `markdown` / `code` / `text` / `image` / `binary` 五种渲染类型（见 §4.3）。
+**`/api/read` 有两种响应格式，根据文件类型自动切换：**
+
+**① 文本/二进制文件**（非图片）：返回 JSON
+
+服务端返回 `'text' | 'binary'` 两种底层类型；客户端在此基础上根据 `FileEntry.ext` 进一步细分为 `markdown` / `code` / `text` / `binary` 四种渲染类型（见 §4.3）。
 
 ```typescript
 interface ReadResponse {
-  type: 'text' | 'image' | 'binary';
-  content: string;    // text: 原始文本；image: base64 data URL；binary: 空字符串
+  type: 'text' | 'binary';
+  content: string;    // text: 原始文本内容；binary: 空字符串
   mimeType: string;
 }
 ```
 
-**图片 serving 策略**：`/api/read?path=` 对图片文件直接以正确 `Content-Type` 流式返回二进制，客户端 `<img src="/api/read?path=...">` 直接引用，避免 base64 编码带来 ~33% 体积膨胀。`ReadResponse` 对图片路径不适用（直接 img src 即可）。
+**② 图片文件**（ext 属于 image 类型）：直接流式返回二进制，`Content-Type` 设为对应 MIME（如 `image/jpeg`）
 
-**错误响应格式**（统一）：
+客户端对图片使用 `<img src="/api/read?path=...">` 直接引用，无需解析 JSON，避免 base64 编码带来 ~33% 体积膨胀。图片加载失败时（如 403）通过 `onError` handler 展示错误提示。
+
+**错误响应格式**（统一，适用于非图片请求）：
 ```typescript
 interface ErrorResponse {
   error: string;   // 人类可读的错误描述
@@ -230,6 +236,8 @@ Fastify 注册 `@fastify/static` 插件 serve `client/dist/`，SPA fallback 到 
 - `typescript`
 - `tsx` - 运行 server TypeScript（替代 ts-node，更快）
 - `concurrently` - 并行启动 server + client
+- `@types/node` - Node.js 类型定义（server 端必须）
+- `@types/react` + `@types/react-dom`
 
 ---
 
