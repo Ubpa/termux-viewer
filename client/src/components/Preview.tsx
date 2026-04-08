@@ -64,12 +64,12 @@ export function Preview({ selectedFile }: PreviewProps) {
   }, [selectedFile])
 
   const containerStyle: CSSProperties = {
-    height: '50%',
+    height: '67%',
     overflowY: 'auto',
     background: '#11111b',
     padding: '16px',
     color: '#cdd6f4',
-    fontSize: '14px',
+    fontSize: '16px',
     lineHeight: '1.6',
   }
 
@@ -149,7 +149,7 @@ export function Preview({ selectedFile }: PreviewProps) {
       <div style={{ ...containerStyle, padding: 0 }}>
         <pre style={{ margin: 0, padding: '16px', overflowX: 'auto' }}>
           <code
-            style={{ fontSize: '13px', fontFamily: 'monospace' }}
+            style={{ fontSize: '15px', fontFamily: 'monospace' }}
             dangerouslySetInnerHTML={{ __html: lineNumbersHtml }}
           />
         </pre>
@@ -160,7 +160,7 @@ export function Preview({ selectedFile }: PreviewProps) {
   // text
   return (
     <div style={containerStyle}>
-      <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'monospace', fontSize: '13px' }}>
+      <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'monospace', fontSize: '15px' }}>
         {content}
       </pre>
     </div>

@@ -15,7 +15,7 @@ export function FileList({ path, onNavigate, onSelectFile, selectedPath }: FileL
   return (
     <div
       style={{
-        height: '50%',
+        height: '33%',
         overflowY: 'auto',
         background: '#181825',
         borderBottom: '1px solid #313244',
@@ -55,7 +55,7 @@ export function FileList({ path, onNavigate, onSelectFile, selectedPath }: FileL
             style={{
               flex: 1,
               color: entry.isDir ? '#89b4fa' : '#cdd6f4',
-              fontSize: '14px',
+              fontSize: '16px',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
@@ -64,7 +64,7 @@ export function FileList({ path, onNavigate, onSelectFile, selectedPath }: FileL
             {entry.name}
           </span>
           {!entry.isDir && (
-            <span style={{ color: '#6c7086', fontSize: '12px', marginLeft: '8px', flexShrink: 0 }}>
+            <span style={{ color: '#6c7086', fontSize: '14px', marginLeft: '8px', flexShrink: 0 }}>
               {formatSize(entry.size)}
             </span>
           )}

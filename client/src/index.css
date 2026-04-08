@@ -23,7 +23,7 @@ html, body, #root {
   padding: 2px 5px;
   border-radius: 3px;
   font-family: monospace;
-  font-size: 12px;
+  font-size: 14px;
 }
 .markdown-body pre {
   background: #1e1e2e;
