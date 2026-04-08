@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import type { FileEntry } from '../types'
 
 interface UseFilesResult {
@@ -12,17 +12,25 @@ export function useFiles(path: string): UseFilesResult {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    setData([])
-
-    fetch(`/api/files?path=${encodeURIComponent(path)}`)
+  // Stable fetch function (doesn't change between renders)
+  const fetchFiles = useCallback((currentPath: string, signal: AbortSignal) => {
+    return fetch(`/api/files?path=${encodeURIComponent(currentPath)}`, { signal })
       .then((res) => {
         if (!res.ok) return res.json().then((e) => { throw new Error(e.error ?? `HTTP ${res.status}`) })
         return res.json()
       })
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    const abortController = new AbortController()
+
+    setLoading(true)
+    setError(null)
+    setData([])
+
+    // Initial fetch
+    fetchFiles(path, abortController.signal)
       .then((json: FileEntry[]) => {
         if (!cancelled) {
           setData(json)
@@ -30,14 +38,32 @@ export function useFiles(path: string): UseFilesResult {
         }
       })
       .catch((err: Error) => {
-        if (!cancelled) {
-          setError(err.message)
-          setLoading(false)
-        }
+        if (!cancelled || err.name === 'AbortError') return
+        setError(err.message)
+        setLoading(false)
       })
 
-    return () => { cancelled = true }
-  }, [path])
+    // SSE watch for real-time updates
+    const es = new EventSource(`/api/watch?path=${encodeURIComponent(path)}`)
+
+    es.onmessage = (event) => {
+      if (cancelled || event.data !== 'change') return
+      // Re-fetch silently (no loading spinner for background refresh)
+      fetchFiles(path, new AbortController().signal)
+        .then((json: FileEntry[]) => {
+          if (!cancelled) setData(json)
+        })
+        .catch(() => { /* silently ignore refresh errors */ })
+    }
+
+    // onerror: EventSource auto-reconnects, no action needed
+
+    return () => {
+      cancelled = true
+      abortController.abort()
+      es.close()
+    }
+  }, [path, fetchFiles])
 
   return { data, loading, error }
 }

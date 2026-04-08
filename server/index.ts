@@ -5,6 +5,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { filesRoute } from './routes/files.js'
 import { readRoute } from './routes/read.js'
+import { watchRoute } from './routes/watch.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const isProd = process.env.NODE_ENV === 'production'
@@ -20,6 +21,7 @@ if (!isProd) {
 // API routes
 await app.register(filesRoute)
 await app.register(readRoute)
+await app.register(watchRoute)
 
 // Production: serve Vite build (output is client/dist/ since vite root=client/)
 if (isProd) {
