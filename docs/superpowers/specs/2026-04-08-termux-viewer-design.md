@@ -71,20 +71,32 @@ interface FileEntry {
 
 ### 3.3 /api/read 响应
 
+服务端仅返回 `'text' | 'image' | 'binary'` 三种底层类型；客户端在此基础上根据 `FileEntry.ext` 进一步细分为 `markdown` / `code` / `text` / `image` / `binary` 五种渲染类型（见 §4.3）。
+
 ```typescript
 interface ReadResponse {
   type: 'text' | 'image' | 'binary';
-  content: string;    // text: 原始文本；image: base64 data URL；binary: 提示不支持
-  encoding: string;   // 如 'utf-8'
+  content: string;    // text: 原始文本；image: base64 data URL；binary: 空字符串
   mimeType: string;
+}
+```
+
+**图片 serving 策略**：`/api/read?path=` 对图片文件直接以正确 `Content-Type` 流式返回二进制，客户端 `<img src="/api/read?path=...">` 直接引用，避免 base64 编码带来 ~33% 体积膨胀。`ReadResponse` 对图片路径不适用（直接 img src 即可）。
+
+**错误响应格式**（统一）：
+```typescript
+interface ErrorResponse {
+  error: string;   // 人类可读的错误描述
+  code: number;    // HTTP 状态码，如 403 / 404 / 500
 }
 ```
 
 ### 3.4 路径安全（fs.ts）
 
 - 所有路径以 `process.env.HOME`（`/data/data/com.termux/files/home`）为根
-- 使用 `path.resolve` 后检查是否以 HOME 开头，防止 `../` 逃逸
-- 返回 403 如果路径非法
+- 使用 `path.resolve` 解析后，再调用 `fs.realpath()` 解析符号链接，防止通过 symlink 逃逸 HOME 目录
+- 最终检查 realpath 是否以 HOME 开头，否则返回 403
+- **隐藏文件策略**：默认显示所有文件（含 `.` 开头的隐藏文件），但 `.ssh/` 目录下的文件内容读取请求返回 403，保护私钥安全
 
 ### 3.5 文件大小限制
 
@@ -121,29 +133,40 @@ interface ReadResponse {
 ### 4.2 组件职责
 
 **App.tsx**
-- 管理当前路径 `currentPath` state
-- 管理选中文件 `selectedFile` state
+- 管理当前路径 `currentPath: string` state（相对 HOME，初始为 `/`）
+- 管理选中文件 `selectedFile: FileEntry | null` state
 - 组合 Breadcrumb + FileList + Preview
 
 **Breadcrumb.tsx**
 - 解析 `currentPath`，展示可点击的路径段
+- 面包屑超长时水平滚动（`overflow-x: auto`），不截断、不折行
 - 点击任意段跳转到对应目录
 
 **FileList.tsx**
-- 接收 `path`，调用 `/api/files` 获取列表
+- 接收 `path`，内部调用 `useFiles(path)` hook 获取列表
 - 目录排在文件前面，各自按名称字母排序
 - 点击目录 → 更新 `currentPath`
 - 点击文件 → 更新 `selectedFile`
 - 显示文件图标（根据 ext）、名称、大小
+- 展示 loading 状态（骨架屏或 spinner）和 error 状态（错误提示文字）
 
 **Preview.tsx**
-- 接收 `selectedFile`，调用 `/api/read` 获取内容
-- 根据 `type` 选择渲染器：
+- 接收 `selectedFile: FileEntry | null`
+- 无选中时显示"点击文件预览"提示
+- 根据 `selectedFile.ext` 确定客户端渲染类型（见 §4.3），再调用 `/api/read` 获取内容
+- 图片类型直接用 `<img src="/api/read?path=...">` 展示，无需调用 ReadResponse
+- 根据渲染类型选择渲染器：
   - `markdown`：使用 `marked` + `DOMPurify` 渲染
   - `code`：使用 `highlight.js` 语法高亮，显示行号
-  - `image`：`<img>` 展示 base64 data URL
+  - `image`：`<img src="/api/read?path=...">` 直接展示
   - `text`：`<pre>` 纯文本
   - `binary`：显示"不支持预览"
+- 展示 loading 状态和 error 状态（如 403 提示"无权限访问"）
+
+**useFiles.ts hook**
+- 参数：`path: string`
+- 返回：`{ data: FileEntry[], loading: boolean, error: string | null }`
+- path 变化时重新 fetch `/api/files?path=`
 
 ### 4.3 文件类型判断（客户端）
 
@@ -224,14 +247,17 @@ Fastify 注册 `@fastify/static` 插件 serve `client/dist/`，SPA fallback 到 
 }
 ```
 
+`tsconfig.node.json` 须设置 `"outDir": "dist/server"`，确保 `node dist/server/index.js` 路径正确。
+
 ---
 
 ## 8. 安全考量
 
-1. **路径 jail**：所有文件操作限制在 `HOME` 目录内
-2. **文件大小限制**：防止读取超大文件导致内存溢出
-3. **XSS 防护**：Markdown 渲染使用 DOMPurify 清洗
-4. **仅本地访问**：默认监听 `0.0.0.0`（局域网可访问），不对外暴露
+1. **路径 jail**：`path.resolve` + `fs.realpath()` 双重校验，防止 `../` 和 symlink 逃逸
+2. **`.ssh/` 保护**：`.ssh/` 目录文件内容请求返回 403
+3. **文件大小限制**：防止读取超大文件导致内存溢出
+4. **XSS 防护**：Markdown 渲染使用 DOMPurify 清洗
+5. **仅本地访问**：默认监听 `0.0.0.0`（局域网可访问），不对外暴露
 
 ---
 
