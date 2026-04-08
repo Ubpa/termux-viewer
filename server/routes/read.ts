@@ -1,8 +1,9 @@
 import type { FastifyInstance } from 'fastify'
 import fs from 'fs/promises'
 import { createReadStream } from 'fs'
+import path from 'path'
 import mime from 'mime-types'
-import { resolveSafePath, isSshPath, isImage, getExt, MAX_TEXT_BYTES, MAX_IMAGE_BYTES } from '../utils/fs.js'
+import { resolveSafePath, isSshPath, isImage, getExt, MAX_TEXT_BYTES, MAX_IMAGE_BYTES, HOME } from '../utils/fs.js'
 
 export async function readRoute(app: FastifyInstance) {
   app.get('/api/read', async (request, reply) => {
@@ -12,15 +13,17 @@ export async function readRoute(app: FastifyInstance) {
       return reply.code(400).send({ error: 'path parameter required', code: 400 })
     }
 
+    // Pre-check SSH path before symlink resolution (so non-existent .ssh/* files still 403)
+    const earlyAbsPath = path.resolve(path.join(HOME, relPath))
+    if (isSshPath(earlyAbsPath)) {
+      return reply.code(403).send({ error: 'Access to .ssh directory is forbidden', code: 403 })
+    }
+
     let absolutePath: string
     try {
       absolutePath = await resolveSafePath(relPath)
     } catch (err: any) {
       return reply.code(err.statusCode ?? 500).send({ error: err.message, code: err.statusCode ?? 500 })
-    }
-
-    if (isSshPath(absolutePath)) {
-      return reply.code(403).send({ error: 'Access to .ssh directory is forbidden', code: 403 })
     }
 
     let stat: import('fs').Stats
@@ -48,9 +51,10 @@ export async function readRoute(app: FastifyInstance) {
     }
 
     // Text files
-    // Note: dotfiles like .gitignore have path.extname() === '' so they won't
-    // match any ext in TEXT_EXTS. They are caught by mimeType.startsWith('text/')
-    // below — mime-types detects them as text/plain — so no special casing needed here.
+    // Note: dotfiles (e.g. .bashrc, .profile, .gitignore) have path.extname() === ''
+    // and mime-types returns false for them, so they fall back to application/octet-stream.
+    // We treat no-extension dotfiles as text by default, since shell config files are text.
+    const isDotfile = ext === '' && path.basename(absolutePath).startsWith('.')
     const TEXT_EXTS = new Set([
       '.md', '.markdown', '.txt', '.log', '.env',
       '.ts', '.tsx', '.js', '.jsx', '.py', '.sh', '.json',
@@ -59,7 +63,7 @@ export async function readRoute(app: FastifyInstance) {
       '.ini', '.conf', '.sql', '.dockerfile', '.makefile',
     ])
 
-    if (TEXT_EXTS.has(ext) || mimeType.startsWith('text/')) {
+    if (TEXT_EXTS.has(ext) || mimeType.startsWith('text/') || isDotfile) {
       let content: string
       if (stat.size > MAX_TEXT_BYTES) {
         const buf = Buffer.alloc(MAX_TEXT_BYTES)
