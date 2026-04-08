@@ -7,5 +7,16 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:3001'
     }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('highlight.js')) return 'highlight'
+          if (id.includes('marked') || id.includes('dompurify')) return 'markdown'
+          if (id.includes('react-dom') || id.includes('react/')) return 'react-vendor'
+        }
+      }
+    }
   }
 })
