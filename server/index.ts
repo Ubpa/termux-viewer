@@ -8,7 +8,7 @@ import { readRoute } from './routes/read.js'
 import { watchRoute } from './routes/watch.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const isProd = process.env.NODE_ENV === 'production'
+const isProd = process.env.NODE_ENV !== 'development'
 const PORT = Number(process.env.PORT ?? 3001)
 
 const app = Fastify({ logger: true })
