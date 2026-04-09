@@ -2,7 +2,7 @@
 """
 codocs setup-hooks script
 
-Installs git hooks from .codocs/hooks/ into .git/hooks/.
+Writes shim scripts into .git/hooks/ that delegate to .codocs/hooks/.
 Run this after cloning a repo that uses codocs.
 
 Usage:
@@ -12,7 +12,6 @@ If project_root is omitted, walks up from cwd to find .codocs/hooks/.
 """
 
 import os
-import shutil
 import stat
 import sys
 from pathlib import Path
@@ -43,28 +42,26 @@ def setup_hooks(project_root: Path):
     hooks_target = git_dir / "hooks"
     hooks_target.mkdir(exist_ok=True)
 
-    installed, skipped = [], []
+    installed, updated = [], []
     for hook_src in sorted(hooks_src_dir.iterdir()):
         if not hook_src.is_file():
             continue
         hook_dst = hooks_target / hook_src.name
-        if hook_dst.exists():
-            skipped.append(hook_src.name)
-            continue
-        shutil.copy2(hook_src, hook_dst)
+        existed = hook_dst.exists()
+
+        # Write a shim that delegates to the versioned hook in .codocs/hooks/
+        # Use explicit \n to avoid CRLF on Windows corrupting the shebang line
+        rel = hook_src.relative_to(project_root).as_posix()
+        shim = '#!/usr/bin/env bash\nexec "$(git rev-parse --show-toplevel)/{}" "$@"\n'.format(rel)
+        hook_dst.write_text(shim, encoding="utf-8", newline="\n")
         hook_dst.chmod(hook_dst.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-        installed.append(hook_src.name)
+        (updated if existed else installed).append(hook_src.name)
 
     if installed:
         print(f"[codocs setup-hooks] installed: {', '.join(installed)}", file=sys.stderr)
-    if skipped:
-        print(
-            f"[codocs setup-hooks] WARNING: skipped (already exist): {', '.join(skipped)}\n"
-            f"                     codocs hooks are NOT active for these. "
-            f"Integrate them into your existing hook setup manually.",
-            file=sys.stderr,
-        )
-    if not installed and not skipped:
+    if updated:
+        print(f"[codocs setup-hooks] updated: {', '.join(updated)}", file=sys.stderr)
+    if not installed and not updated:
         print("[codocs setup-hooks] no hook files found in .codocs/hooks/", file=sys.stderr)
 
 
