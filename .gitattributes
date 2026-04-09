@@ -1,3 +1,0 @@
-# Always LF for shell scripts and JSON config — prevents CRLF issues on Windows
-.codocs/hooks/*     text eol=lf
-.codocs/config.json text eol=lf
