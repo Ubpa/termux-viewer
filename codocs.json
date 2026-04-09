@@ -1,0 +1,5 @@
+{
+  "roots": ["server", "client/src"],
+  "exclude": ["*.css", "*.generated.*"],
+  "exclude_paths": []
+}
