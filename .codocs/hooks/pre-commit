@@ -5,26 +5,33 @@
 
 set -euo pipefail
 
-CODOCS_CONFIG="$(git rev-parse --show-toplevel)/.codocs/config.json"
+ROOT="$(git rev-parse --show-toplevel)"
+CODOCS_CONFIG="$ROOT/.codocs/config.json"
 
 # 没有 .codocs/config.json 则跳过
 if [ ! -f "$CODOCS_CONFIG" ]; then
   exit 0
 fi
 
-# 从 .codocs/config.json 读取 roots
-roots=()
-while IFS= read -r line; do
-  clean="${line//\"/}"
-  clean="${clean//,/}"
-  clean="${clean// /}"
-  [ -n "$clean" ] && roots+=("$clean")
-done < <(python3 -c "
-import json, sys
+PYTHON=$(command -v python 2>/dev/null || command -v python3 2>/dev/null)
+if [ -z "$PYTHON" ]; then
+  echo "[codocs] ERROR: python not found, cannot check doc coverage" >&2
+  echo "         Install Python or run with --no-verify to bypass." >&2
+  exit 1
+fi
+# Verify the python binary actually works (Windows Store stub may be a no-op)
+if ! "$PYTHON" -c "import sys" 2>/dev/null; then
+  echo "[codocs] ERROR: python found at $PYTHON but cannot execute" >&2
+  exit 1
+fi
+
+# 从 .codocs/config.json 读取 roots（tr -d '\r' 处理 Windows CRLF）
+mapfile -t roots < <("$PYTHON" -c "
+import json
 d = json.load(open('$CODOCS_CONFIG'))
 for r in d.get('roots', []):
     print(r)
-")
+" 2>/dev/null | tr -d '\r')
 
 if [ ${#roots[@]} -eq 0 ]; then
   exit 0
