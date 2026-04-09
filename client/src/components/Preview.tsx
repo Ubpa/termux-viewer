@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { marked } from 'marked'
-import DOMPurify from 'dompurify'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
 import type { FileEntry, ReadResponse } from '../types'
@@ -122,13 +122,10 @@ export function Preview({ selectedFile }: PreviewProps) {
   }
 
   if (renderType === 'markdown') {
-    const html = DOMPurify.sanitize(marked.parse(content, { async: false }) as string)
     return (
-      <div
-        style={containerStyle}
-        dangerouslySetInnerHTML={{ __html: html }}
-        className="markdown-body"
-      />
+      <div style={containerStyle} className="markdown-body">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+      </div>
     )
   }
 

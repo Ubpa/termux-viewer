@@ -1,7 +1,8 @@
 import path from 'path'
 import fs from 'fs/promises'
+import os from 'os'
 
-export const HOME = process.env.HOME ?? '/data/data/com.termux/files/home'
+export const HOME = process.env.HOME ?? process.env.USERPROFILE ?? os.homedir()
 
 export const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'])
 

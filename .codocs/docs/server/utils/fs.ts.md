@@ -8,7 +8,7 @@
 
 | 导出 | 类型 | 说明 |
 |------|------|------|
-| `HOME` | `string` | 取自 `process.env.HOME`，fallback 为 Termux 默认路径 |
+| `HOME` | `string` | `process.env.HOME ?? process.env.USERPROFILE ?? os.homedir()`，跨平台兼容 Termux/Windows/macOS |
 | `IMAGE_EXTS` | `Set<string>` | 支持的图片扩展名集合 |
 | `MAX_TEXT_BYTES` | `number` | 文本文件读取上限：1 MB |
 | `MAX_IMAGE_BYTES` | `number` | 图片文件传输上限：10 MB |

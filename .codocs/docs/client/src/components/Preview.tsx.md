@@ -15,7 +15,7 @@
 |---|---|---|
 | `image` | `<img>` 直接指向 `/api/read?path=...` | 不发 fetch，onError 捕获加载失败 |
 | `binary` | 占位提示"不支持预览" | 不发 fetch |
-| `markdown` | `marked.parse` → `DOMPurify.sanitize` → `dangerouslySetInnerHTML` | XSS 防护 |
+| `markdown` | `<ReactMarkdown remarkPlugins={[remarkGfm]}>` | 直接渲染为 React 组件树，无 dangerouslySetInnerHTML，支持 GFM（表格/任务列表/删除线） |
 | `code` | `highlight.js` 高亮 + 行号注入 | 自动语言检测（`highlightAuto` fallback），末尾空行去除 |
 | `text` | `<pre>` 纯文本，`word-break: break-all` | 无高亮 |
 
