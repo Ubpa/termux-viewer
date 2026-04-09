@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# codocs commit-msg hook (auto-installed by codocs init)
+# 若 pre-commit 检测到受管控文件但无文档改动，
+# 检查 commit message 是否含 doc: skip/updated 标记。
+
+COMMIT_MSG_FILE="$1"
+PENDING_FLAG="${TMPDIR:-/tmp}/codocs_needs_doc_check"
+PENDING_FILES="${TMPDIR:-/tmp}/codocs_pending_files"
+
+# 没有 pre-commit 设置的标记，直接通过
+if [ ! -f "$PENDING_FLAG" ]; then
+  exit 0
+fi
+
+commit_msg=$(cat "$COMMIT_MSG_FILE")
+
+# 检查是否有 doc: skip 或 doc: updated 标记（必须在独立行）
+if echo "$commit_msg" | grep -qE "^doc: (skip|updated)"; then
+  rm -f "$PENDING_FLAG" "$PENDING_FILES"
+  exit 0
+fi
+
+# 没有标记，拒绝提交
+echo ""
+echo "╔══════════════════════════════════════════════════════════════╗"
+echo "║  codocs: 受管控文件改动，缺少文档更新或跳过标记              ║"
+echo "╚══════════════════════════════════════════════════════════════╝"
+echo ""
+if [ -f "$PENDING_FILES" ]; then
+  echo "涉及的受管控文件："
+  while IFS= read -r f; do
+    echo "  • $f"
+  done < "$PENDING_FILES"
+  echo ""
+fi
+echo "请在 commit message body 中加入以下任一标记："
+echo ""
+echo "  doc: updated          # 已更新对应文档"
+echo "  doc: skip(<理由>)     # 跳过，如：doc: skip(仅内部实现，接口无变化)"
+echo ""
+echo "示例："
+echo "  feat: add new route"
+echo ""
+echo "  doc: skip(仅新增内部路由，不改变对外 API 接口)"
+echo ""
+
+rm -f "$PENDING_FLAG" "$PENDING_FILES"
+exit 1
