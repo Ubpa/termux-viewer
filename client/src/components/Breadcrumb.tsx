@@ -24,7 +24,6 @@ export function Breadcrumb({ currentPath, onNavigate }: BreadcrumbProps) {
         fontSize: '13px',
         background: '#1e1e2e',
         color: '#cdd6f4',
-        borderBottom: '1px solid #313244',
       }}
     >
       {segments.map((seg, i) => (
@@ -32,7 +31,7 @@ export function Breadcrumb({ currentPath, onNavigate }: BreadcrumbProps) {
           {i > 0 && <span style={{ color: '#6c7086', margin: '0 4px' }}>/</span>}
           {i < segments.length - 1 ? (
             <button
-              onClick={() => onNavigate(seg.path)}
+              onClick={(e) => { e.stopPropagation(); onNavigate(seg.path) }}
               style={{
                 background: 'none',
                 border: 'none',

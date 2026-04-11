@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import hljs from 'highlight.js'
@@ -8,13 +8,23 @@ import { getRenderType } from '../utils/fileType'
 
 interface PreviewProps {
   selectedFile: FileEntry | null
+  onScrollDown?: () => void
 }
 
-export function Preview({ selectedFile }: PreviewProps) {
+export function Preview({ selectedFile, onScrollDown }: PreviewProps) {
   const [content, setContent] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [imgError, setImgError] = useState<string | null>(null)
+  const lastScrollTop = useRef(0)
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop } = e.currentTarget
+    if (scrollTop > lastScrollTop.current && scrollTop > 10) {
+      onScrollDown?.()
+    }
+    lastScrollTop.current = scrollTop
+  }
 
   useEffect(() => {
     setImgError(null)   // always clear image-specific error on file change
@@ -64,7 +74,7 @@ export function Preview({ selectedFile }: PreviewProps) {
   }, [selectedFile])
 
   const containerStyle: CSSProperties = {
-    height: '67%',
+    flex: 1,
     overflowY: 'auto',
     background: '#11111b',
     padding: '16px',
@@ -73,19 +83,24 @@ export function Preview({ selectedFile }: PreviewProps) {
     lineHeight: '1.6',
   }
 
+  const container = (children: ReactNode, extraStyle?: CSSProperties) => (
+    <div style={{ ...containerStyle, ...extraStyle }} onScroll={handleScroll}>
+      {children}
+    </div>
+  )
+
   if (!selectedFile) {
-    return (
-      <div style={{ ...containerStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6c7086' }}>
-        点击上方文件预览内容
-      </div>
+    return container(
+      <span style={{ color: '#6c7086' }}>点击上方文件预览内容</span>,
+      { display: 'flex', alignItems: 'center', justifyContent: 'center' }
     )
   }
 
   const renderType = getRenderType(selectedFile.ext, selectedFile.name)
 
   if (renderType === 'image') {
-    return (
-      <div style={{ ...containerStyle, textAlign: 'center' }}>
+    return container(
+      <>
         <img
           src={`/api/read?path=${encodeURIComponent(selectedFile.path)}`}
           alt={selectedFile.name}
@@ -93,37 +108,35 @@ export function Preview({ selectedFile }: PreviewProps) {
           onError={() => setImgError('图片加载失败（可能无权限访问）')}
         />
         {imgError && <div style={{ color: '#f38ba8', marginTop: '8px' }}>⚠️ {imgError}</div>}
-      </div>
+      </>,
+      { textAlign: 'center' }
     )
   }
 
   if (renderType === 'binary') {
-    return (
-      <div style={{ ...containerStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6c7086' }}>
-        🚫 不支持预览此文件类型
-      </div>
+    return container(
+      <span>🚫 不支持预览此文件类型</span>,
+      { display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6c7086' }
     )
   }
 
   if (loading) {
-    return (
-      <div style={{ ...containerStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6c7086' }}>
-        加载中...
-      </div>
+    return container(
+      <span>加载中...</span>,
+      { display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6c7086' }
     )
   }
 
   if (error) {
-    return (
-      <div style={{ ...containerStyle, color: '#f38ba8' }}>
-        ⚠️ {error}
-      </div>
+    return container(
+      <span>⚠️ {error}</span>,
+      { color: '#f38ba8' }
     )
   }
 
   if (renderType === 'markdown') {
-    return (
-      <div style={containerStyle} className="markdown-body">
+    return container(
+      <div className="markdown-body">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
       </div>
     )
@@ -136,30 +149,26 @@ export function Preview({ selectedFile }: PreviewProps) {
       : hljs.highlightAuto(content).value
 
     const lines = highlighted.split('\n')
-    // Remove trailing empty line caused by final newline
     if (lines[lines.length - 1] === '') lines.pop()
     const lineNumbersHtml = lines
       .map((line, i) => `<span class="line-num">${i + 1}</span>${line}`)
       .join('\n')
 
-    return (
-      <div style={{ ...containerStyle, padding: 0 }}>
-        <pre style={{ margin: 0, padding: '16px', overflowX: 'auto' }}>
-          <code
-            style={{ fontSize: '15px', fontFamily: 'monospace' }}
-            dangerouslySetInnerHTML={{ __html: lineNumbersHtml }}
-          />
-        </pre>
-      </div>
+    return container(
+      <pre style={{ margin: 0, padding: '16px', overflowX: 'auto' }}>
+        <code
+          style={{ fontSize: '15px', fontFamily: 'monospace' }}
+          dangerouslySetInnerHTML={{ __html: lineNumbersHtml }}
+        />
+      </pre>,
+      { padding: 0 }
     )
   }
 
   // text
-  return (
-    <div style={containerStyle}>
-      <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'monospace', fontSize: '15px' }}>
-        {content}
-      </pre>
-    </div>
+  return container(
+    <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'monospace', fontSize: '15px' }}>
+      {content}
+    </pre>
   )
 }

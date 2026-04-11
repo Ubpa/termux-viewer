@@ -15,7 +15,7 @@ export function FileList({ path, onNavigate, onSelectFile, selectedPath }: FileL
   return (
     <div
       style={{
-        height: '33%',
+        height: '100%',
         overflowY: 'auto',
         background: '#181825',
         borderBottom: '1px solid #313244',

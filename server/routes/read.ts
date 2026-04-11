@@ -59,7 +59,7 @@ export async function readRoute(app: FastifyInstance) {
       '.md', '.markdown', '.txt', '.log', '.env',
       '.ts', '.tsx', '.js', '.jsx', '.py', '.sh', '.json',
       '.yaml', '.yml', '.toml', '.css', '.html', '.xml',
-      '.c', '.cpp', '.go', '.rs', '.java', '.rb', '.php',
+      '.c', '.cpp', '.h', '.hpp', '.hxx', '.inl', '.go', '.rs', '.java', '.rb', '.php',
       '.ini', '.conf', '.sql', '.dockerfile', '.makefile',
     ])
 

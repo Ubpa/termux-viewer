@@ -5,7 +5,7 @@ const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'])
 const CODE_EXTS = new Set([
   '.ts', '.tsx', '.js', '.jsx', '.py', '.sh', '.json',
   '.yaml', '.yml', '.toml', '.css', '.html', '.xml',
-  '.c', '.cpp', '.go', '.rs', '.java', '.rb', '.php',
+  '.c', '.cpp', '.h', '.hpp', '.hxx', '.inl', '.go', '.rs', '.java', '.rb', '.php',
   '.ini', '.conf', '.sql', '.dockerfile', '.makefile',
 ])
 const TEXT_EXTS = new Set(['.txt', '.log', '.env', '.csv'])
