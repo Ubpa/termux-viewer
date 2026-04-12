@@ -4,6 +4,6 @@
 
 **`findGitConfig`**：从 `path` 向上遍历到 HOME 边界，逐级查找 `.git/config`。
 
-**`parseOriginUrl` + `toHttpsUrl`**：提取 `[remote "origin"]` 的 url，转换三种格式：HTTPS 直接返回；`git@host:user/repo.git` → `https://host/user/repo`；`git://` 同理。
+**`parseOriginUrl` + `toHttpsUrl`**：提取 `[remote "origin"]` 的 url，转换三种格式：HTTPS/HTTP 去掉 `.git` 后缀后返回；`git@host:user/repo.git` → `https://host/user/repo`；`git://` 同理。
 
 响应：`{ url: string | null }`，无仓库或无 origin 时为 `null`。
