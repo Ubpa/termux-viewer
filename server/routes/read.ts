@@ -60,7 +60,7 @@ export async function readRoute(app: FastifyInstance) {
       '.ts', '.tsx', '.js', '.jsx', '.py', '.sh', '.json',
       '.yaml', '.yml', '.toml', '.css', '.html', '.xml',
       '.c', '.cpp', '.h', '.hpp', '.hxx', '.inl', '.go', '.rs', '.java', '.rb', '.php',
-      '.ini', '.conf', '.sql', '.dockerfile', '.makefile',
+      '.ini', '.conf', '.sql', '.dockerfile', '.makefile', '.ps1', '.psm1', '.psd1',
     ])
 
     if (TEXT_EXTS.has(ext) || mimeType.startsWith('text/') || isDotfile) {
