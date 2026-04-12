@@ -9,9 +9,10 @@ import { getRenderType } from '../utils/fileType'
 interface PreviewProps {
   selectedFile: FileEntry | null
   onScrollDown?: () => void
+  onScrollUpAtTop?: () => void
 }
 
-export function Preview({ selectedFile, onScrollDown }: PreviewProps) {
+export function Preview({ selectedFile, onScrollDown, onScrollUpAtTop }: PreviewProps) {
   const [content, setContent] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -22,6 +23,8 @@ export function Preview({ selectedFile, onScrollDown }: PreviewProps) {
     const { scrollTop } = e.currentTarget
     if (scrollTop > lastScrollTop.current && scrollTop > 10) {
       onScrollDown?.()
+    } else if (scrollTop < lastScrollTop.current && scrollTop === 0) {
+      onScrollUpAtTop?.()
     }
     lastScrollTop.current = scrollTop
   }

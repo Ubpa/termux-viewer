@@ -74,7 +74,7 @@ export function App() {
             onLoad={handleLoad}
           />
         </div>
-        <Preview selectedFile={selectedFile} onScrollDown={() => setListCollapsed(true)} />
+        <Preview selectedFile={selectedFile} onScrollDown={() => setListCollapsed(true)} onScrollUpAtTop={() => setListCollapsed(false)} />
       </div>
     </div>
   )
