@@ -74,7 +74,7 @@ export function Preview({ selectedFile, onScrollDown, onScrollUpAtTop }: Preview
       })
 
     return () => { cancelled = true }
-  }, [selectedFile])
+  }, [selectedFile?.path])
 
   const containerStyle: CSSProperties = {
     flex: 1,
