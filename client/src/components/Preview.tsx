@@ -20,9 +20,18 @@ export function Preview({ selectedFile, onScrollDown, onScrollUpAtTop }: Preview
   const lastScrollTop = useRef(0)
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop } = e.currentTarget
+    const el = e.currentTarget
+    const { scrollTop, scrollHeight, clientHeight } = el
     if (scrollTop > lastScrollTop.current && scrollTop > 10) {
-      onScrollDown?.()
+      // Only collapse if content will remain scrollable after the file list
+      // collapses. Collapsing grows the preview container by ~220px (file list
+      // minHeight). If scrollHeight can't fill the enlarged container, collapsing
+      // would leave no scrollable area and no way to scroll back up to re-expand.
+      const fileListHeight = 220
+      const remainingScroll = scrollHeight - scrollTop - clientHeight
+      if (remainingScroll > 50 && scrollHeight > clientHeight + fileListHeight) {
+        onScrollDown?.()
+      }
     } else if (scrollTop < lastScrollTop.current && scrollTop === 0) {
       onScrollUpAtTop?.()
     }
