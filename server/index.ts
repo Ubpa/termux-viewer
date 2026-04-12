@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url'
 import { filesRoute } from './routes/files.js'
 import { readRoute } from './routes/read.js'
 import { watchRoute } from './routes/watch.js'
+import { gitRemoteRoute } from './routes/gitRemote.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const isProd = process.env.NODE_ENV !== 'development'
@@ -22,6 +23,7 @@ if (!isProd) {
 await app.register(filesRoute)
 await app.register(readRoute)
 await app.register(watchRoute)
+await app.register(gitRemoteRoute)
 
 // Production: serve Vite build (output is client/dist/ since vite root=client/)
 if (isProd) {
