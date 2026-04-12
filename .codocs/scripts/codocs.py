@@ -334,8 +334,8 @@ def lint(project_root: Path) -> int:
     if get_lint_enabled(config, "bloat"):
         BLOAT_RATIO_LO = 0.10  # below this → [THIN]
         BLOAT_RATIO_HI = 0.24  # above this → [BLOAT]
-        BLOAT_MIN_SRC = 256   # skip file MD check if source is below this threshold
-        BLOAT_MIN_DIR = 2048  # skip dir MD check if child-MD total is below this threshold
+        BLOAT_MIN_SRC = 1024  # skip file MD check if source is below this threshold
+        BLOAT_MIN_DIR = 4096  # skip dir MD check if child-MD total is below this threshold
         #   (dir MDs need mandatory index tables; small dirs always exceed ratio)
         for _, is_dir, source_path, md_path, _ in entries:
             if not md_path.exists():
