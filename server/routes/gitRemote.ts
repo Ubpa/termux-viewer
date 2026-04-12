@@ -14,8 +14,8 @@ function parseOriginUrl(configText: string): string | null {
 
 /** Convert ssh/git remote URLs to browsable HTTPS URLs */
 function toHttpsUrl(raw: string): string {
-  // Already HTTPS/HTTP
-  if (raw.startsWith('https://') || raw.startsWith('http://')) return raw
+  // Already HTTPS/HTTP — strip trailing .git for browser navigation
+  if (raw.startsWith('https://') || raw.startsWith('http://')) return raw.replace(/\.git$/, '')
   // SSH: git@github.com:user/repo.git
   const sshMatch = raw.match(/^git@([^:]+):(.+?)(?:\.git)?$/)
   if (sshMatch) return `https://${sshMatch[1]}/${sshMatch[2]}`
