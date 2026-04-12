@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import type { FileEntry } from '../types'
 import { useFiles } from '../hooks/useFiles'
 import { formatSize, fileIcon } from '../utils/fileType'
@@ -7,10 +8,15 @@ interface FileListProps {
   onNavigate: (path: string) => void
   onSelectFile: (file: FileEntry) => void
   selectedPath: string | null
+  onLoad?: (files: FileEntry[]) => void
 }
 
-export function FileList({ path, onNavigate, onSelectFile, selectedPath }: FileListProps) {
+export function FileList({ path, onNavigate, onSelectFile, selectedPath, onLoad }: FileListProps) {
   const { data, loading, error } = useFiles(path)
+
+  useEffect(() => {
+    if (!loading && !error) onLoad?.(data)
+  }, [data, loading, error])
 
   return (
     <div

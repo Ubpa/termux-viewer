@@ -14,6 +14,11 @@ export function App() {
     setSelectedFile(null)
   }
 
+  const handleLoad = (files: FileEntry[]) => {
+    const readme = files.find(f => !f.isDir && /^readme(\.(md|txt|rst))?$/i.test(f.name))
+    if (readme) setSelectedFile(readme)
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       {/* Header */}
@@ -66,6 +71,7 @@ export function App() {
             onNavigate={handleNavigate}
             onSelectFile={setSelectedFile}
             selectedPath={selectedFile?.path ?? null}
+            onLoad={handleLoad}
           />
         </div>
         <Preview selectedFile={selectedFile} onScrollDown={() => setListCollapsed(true)} />
