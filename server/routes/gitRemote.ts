@@ -69,4 +69,3 @@ export async function gitRemoteRoute(app: FastifyInstance) {
     return reply.send({ url })
   })
 }
-// test
