@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkFrontmatter from 'remark-frontmatter'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
 import type { FileEntry, ReadResponse } from '../types'
@@ -149,7 +150,7 @@ export function Preview({ selectedFile, onScrollDown, onScrollUpAtTop }: Preview
   if (renderType === 'markdown') {
     return container(
       <div className="markdown-body">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+        <ReactMarkdown remarkPlugins={[remarkGfm, remarkFrontmatter]}>{content}</ReactMarkdown>
       </div>
     )
   }
