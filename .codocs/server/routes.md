@@ -1,6 +1,6 @@
 # server/routes
 
-四条 API 路由，每条对应一个独立 Fastify 插件（`FastifyPluginAsync`），注册于 `index.ts`。
+五条 API 路由，每条对应一个独立 Fastify 插件（`FastifyPluginAsync`），注册于 `index.ts`。
 
 ## 内容
 
@@ -10,3 +10,4 @@
 | read.ts | 文件 | `GET /api/read` — 文件读取，分图片流/文本/binary 三路 |
 | watch.ts | 文件 | `GET /api/watch` — SSE 目录变更推送，debounce 300ms |
 | gitRemote.ts | 文件 | `GET /api/git-remote` — 返回当前目录所属 git 仓库的 origin remote URL |
+| delete.ts | 文件 | `DELETE /api/delete` — 删除文件或目录，含安全校验（禁 .ssh、禁 HOME 根） |
