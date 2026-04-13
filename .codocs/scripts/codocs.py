@@ -109,7 +109,7 @@ def scan(project_root: Path, config: dict) -> list[tuple[int, bool, Path, Path, 
     roots = config.get("roots", [])
     exclude = config.get("exclude", [])
     exclude_paths = config.get("exclude_paths", [])
-    codocs_dir = project_root / ".codocs"
+    codocs_dir = project_root / ".codocs" / "docs"
 
     entries: list[tuple[int, bool, Path, Path, str]] = []
 
@@ -211,12 +211,16 @@ def install_hooks(project_root: Path):
     local_script = codocs_scripts_dir / "codocs.py"
     self_path = Path(__file__).resolve()
     if local_script.resolve() != self_path:  # avoid copying onto self
-        if local_script.exists():
-            skipped.append(".codocs/scripts/codocs.py")
-        else:
-            codocs_scripts_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(self_path, local_script)
-            installed.append(".codocs/scripts/codocs.py")
+        codocs_scripts_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(self_path, local_script)
+        installed.append(".codocs/scripts/codocs.py")
+
+    # Copy README.md to .codocs/README.md (always overwrite)
+    readme_src = SKILL_DIR / "docs" / "README.md"
+    readme_dst = project_root / ".codocs" / "README.md"
+    if readme_src.exists():
+        shutil.copy2(readme_src, readme_dst)
+        installed.append(".codocs/README.md")
 
     # Copy hooks
     if not hooks_src.exists():
@@ -228,12 +232,9 @@ def install_hooks(project_root: Path):
     for hook_file in sorted(hooks_src.iterdir()):
         if hook_file.is_file():
             dest = git_hooks_dir / hook_file.name
-            if dest.exists():
-                skipped.append(hook_file.name)
-            else:
-                shutil.copy2(hook_file, dest)
-                dest.chmod(dest.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-                installed.append(hook_file.name)
+            shutil.copy2(hook_file, dest)
+            dest.chmod(dest.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+            installed.append(hook_file.name)
 
     return installed, skipped
 
@@ -289,7 +290,7 @@ def lint(project_root: Path) -> int:
 
     Returns the number of issues found (0 = clean).
     """
-    codocs_dir = project_root / ".codocs"
+    codocs_dir = project_root / ".codocs" / "docs"
 
     if not codocs_dir.exists():
         print("[codocs lint] .codocs/ directory not found", file=sys.stderr)
@@ -326,17 +327,34 @@ def lint(project_root: Path) -> int:
 
             source_path = project_root / rel_source_str
             if not source_path.exists():
-                issues.append(("ORPHAN", f".codocs/{rel_str}", f"{rel_source_str} not found"))
+                issues.append(("ORPHAN", f".codocs/docs/{rel_str}", f"{rel_source_str} not found"))
             elif is_excluded_path(source_path, project_root, exclude_paths):
-                issues.append(("ORPHAN", f".codocs/{rel_str}", f"{rel_source_str} is excluded by exclude_paths"))
+                issues.append(("ORPHAN", f".codocs/docs/{rel_str}", f"{rel_source_str} is excluded by exclude_paths"))
 
-    # Phase 3: check for BLOAT / THIN (MD size should be 16%–24% of source)
+    # Phase 3: check for BLOAT / THIN (MD size should be 10%–24% of source)
+    # Uses a smooth threshold that accounts for fixed overhead in small files:
+    #   BLOAT upper limit = BASE + (size - BASE) * 24%   (for size > BASE)
+    #   THIN  lower limit = (size - BASE) * 10%          (for size > BASE, else 0)
+    # This means files near the BASE threshold get generous allowance, converging
+    # to the standard ratio as files grow larger.
     if get_lint_enabled(config, "bloat"):
         BLOAT_RATIO_LO = 0.10  # below this → [THIN]
         BLOAT_RATIO_HI = 0.24  # above this → [BLOAT]
-        BLOAT_MIN_SRC = 1024  # skip file MD check if source is below this threshold
-        BLOAT_MIN_DIR = 4096  # skip dir MD check if child-MD total is below this threshold
-        #   (dir MDs need mandatory index tables; small dirs always exceed ratio)
+        BLOAT_MIN_SRC = 1024   # base threshold for file MD
+        BLOAT_MIN_DIR = 4096   # base threshold for dir MD
+
+        def bloat_upper(size: int, base: int) -> float:
+            """Max allowed MD size before BLOAT triggers."""
+            if size <= base:
+                return float('inf')  # skip check
+            return base + (size - base) * BLOAT_RATIO_HI
+
+        def thin_lower(size: int, base: int) -> float:
+            """Min required MD size before THIN triggers."""
+            if size <= base:
+                return 0  # skip check
+            return (size - base) * BLOAT_RATIO_LO
+
         for _, is_dir, source_path, md_path, _ in entries:
             if not md_path.exists():
                 continue  # MISSING already reported
@@ -350,26 +368,28 @@ def lint(project_root: Path) -> int:
                 if not source_path.exists():
                     continue
                 src_size = source_path.stat().st_size
-                if src_size < BLOAT_MIN_SRC:
+                if src_size <= BLOAT_MIN_SRC:
                     continue  # too small to enforce ratio
-                ratio = md_size / src_size
+                upper = bloat_upper(src_size, BLOAT_MIN_SRC)
+                lower = thin_lower(src_size, BLOAT_MIN_SRC)
                 try:
                     rel = md_path.relative_to(project_root)
                     rel_str_md = str(rel).replace("\\", "/")
                 except ValueError:
                     continue
-                if ratio > BLOAT_RATIO_HI:
+                ratio = md_size / src_size
+                if md_size > upper:
                     issues.append((
                         "BLOAT",
                         rel_str_md,
-                        f"MD {md_size}B > {BLOAT_RATIO_HI*100:.0f}% of source {src_size}B "
+                        f"MD {md_size}B > smooth limit {upper:.0f}B of source {src_size}B "
                         f"({ratio*100:.0f}%)",
                     ))
-                elif ratio < BLOAT_RATIO_LO:
+                elif md_size < lower:
                     issues.append((
                         "THIN",
                         rel_str_md,
-                        f"MD {md_size}B < {BLOAT_RATIO_LO*100:.0f}% of source {src_size}B "
+                        f"MD {md_size}B < smooth limit {lower:.0f}B of source {src_size}B "
                         f"({ratio*100:.0f}%)",
                     ))
             else:
@@ -387,26 +407,28 @@ def lint(project_root: Path) -> int:
                 )
                 if child_md_total == 0:
                     continue
-                if child_md_total < BLOAT_MIN_DIR:
+                if child_md_total <= BLOAT_MIN_DIR:
                     continue  # too small; index table alone will exceed ratio
-                ratio = md_size / child_md_total
+                upper = bloat_upper(child_md_total, BLOAT_MIN_DIR)
+                lower = thin_lower(child_md_total, BLOAT_MIN_DIR)
                 try:
                     rel = md_path.relative_to(project_root)
                     rel_str_md = str(rel).replace("\\", "/")
                 except ValueError:
                     continue
-                if ratio > BLOAT_RATIO_HI:
+                ratio = md_size / child_md_total
+                if md_size > upper:
                     issues.append((
                         "BLOAT",
                         rel_str_md,
-                        f"dir MD {md_size}B > {BLOAT_RATIO_HI*100:.0f}% of child MDs total "
+                        f"dir MD {md_size}B > smooth limit {upper:.0f}B of child MDs total "
                         f"{child_md_total}B ({ratio*100:.0f}%)",
                     ))
-                elif ratio < BLOAT_RATIO_LO:
+                elif md_size < lower:
                     issues.append((
                         "THIN",
                         rel_str_md,
-                        f"dir MD {md_size}B < {BLOAT_RATIO_LO*100:.0f}% of child MDs total "
+                        f"dir MD {md_size}B < smooth limit {lower:.0f}B of child MDs total "
                         f"{child_md_total}B ({ratio*100:.0f}%)",
                     ))
 
@@ -457,9 +479,9 @@ def lint(project_root: Path) -> int:
                                         f"dependencies[{i}].when: all items must be strings"))
                     else:
                         for w in when:
-                            if w.startswith(".codocs/"):
+                            if w.startswith(".codocs/docs/"):
                                 issues.append(("CONFIG", "codocs.json",
-                                               f"dependencies[{i}].when: .codocs/ paths are unusual; "
+                                               f"dependencies[{i}].when: .codocs/docs/ paths are unusual; "
                                                f"consider using update instead ({w})"))
                             wp = project_root / w
                             if not wp.exists():
@@ -474,9 +496,9 @@ def lint(project_root: Path) -> int:
                                         f"dependencies[{i}].update: all items must be strings"))
                     else:
                         for u in update:
-                            if not (u.startswith(".codocs/") and u.endswith(".md")):
+                            if not (u.startswith(".codocs/docs/") and u.endswith(".md")):
                                 issues.append(("CONFIG", "codocs.json",
-                                               f"dependencies[{i}].update: must start with .codocs/ "
+                                               f"dependencies[{i}].update: must start with .codocs/docs/ "
                                                f"and end with .md ({u})"))
                             else:
                                 up = project_root / u
@@ -519,7 +541,7 @@ def parent_sync(project_root: Path, changed_md_paths: list[str]) -> int:
 
     Returns the count of missing parent MDs (0 = all covered).
     """
-    codocs_dir = project_root / ".codocs"
+    codocs_dir = project_root / ".codocs" / "docs"
 
     # Resolve changed paths to absolute
     changed_abs: set[Path] = set()

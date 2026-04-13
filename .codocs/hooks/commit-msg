@@ -15,10 +15,6 @@
 #
 # Only "[all]" triggers a global skip. Entries not starting with ".codocs/"
 # and not matching "[all]" are IGNORED (prevents accidental global skip from typos).
-#
-# Legacy syntax still supported:
-#   doc: updated   — satisfies doc-change check (Phase 2) only
-#   doc: skip(...) — global skip (legacy, still accepted)
 
 COMMIT_MSG_FILE="$1"
 PENDING_FLAG="${TMPDIR:-/tmp}/codocs_needs_doc_check"
@@ -58,21 +54,13 @@ while IFS= read -r line; do
       if echo "$item" | grep -qE "^\[all\]"; then
         # Explicit global skip
         global_skip=true
-      elif echo "$item" | grep -qE "^\.codocs/"; then
-        # path-specific: extract path before the ":"
+      elif echo "$item" | grep -qE "^\.codocs/docs/"; then
+        # path-specific .codocs/docs/ skip (Phase 3/4)
         path=$(echo "$item" | sed 's/:.*//')
         skip_paths+=("$path")
       fi
-      # Other entries (typos, non-.codocs/ paths) are silently ignored
+      # Other entries are silently ignored
     fi
-  fi
-done <<< "$commit_msg"
-
-# ── Legacy global skip: doc: skip(...) ───────────────────────────────────
-while IFS= read -r line; do
-  if echo "$line" | grep -qE "^doc: skip\(.+\)"; then
-    global_skip=true
-    break
   fi
 done <<< "$commit_msg"
 
@@ -86,18 +74,17 @@ block=false
 
 # ── Check 1: codocs_needs_doc_check (Phase 2) ────────────────────────────
 if [ -f "$PENDING_FLAG" ]; then
-  has_phase2_skip=false
-  if echo "$commit_msg" | grep -qE "^doc: (skip|updated)"; then has_phase2_skip=true; fi
-
-  if [ "$has_phase2_skip" = true ]; then
-    rm -f "$PENDING_FLAG" "$PENDING_FILES"
-  elif [ -f "$PENDING_FILES" ]; then
+  if [ -f "$PENDING_FILES" ]; then
     # Check if all pending files are covered by path-specific skips
+    # pending_files contains source paths (e.g. src/Runtime/Codec.cpp)
+    # skip_paths contains .codocs/ paths (e.g. .codocs/src/Runtime/Codec.cpp.md)
     uncovered_phase2=()
     while IFS= read -r pending_file; do
+      pending_file="${pending_file%$'\r'}"  # strip trailing \r (Windows CRLF)
       covered=false
+      codocs_path=".codocs/docs/$pending_file.md"
       for sp in "${skip_paths[@]}"; do
-        if [ "$sp" = "$pending_file" ]; then
+        if [ "$sp" = "$codocs_path" ]; then
           covered=true
           break
         fi
@@ -107,23 +94,26 @@ if [ -f "$PENDING_FLAG" ]; then
 
     if [ ${#uncovered_phase2[@]} -gt 0 ]; then
       block=true
+      local_count=${#uncovered_phase2[@]}
       echo ""
-      echo "╔══════════════════════════════════════════════════════════════╗"
-      echo "║  codocs: 受管控文件改动，缺少文档更新或跳过标记              ║"
-      echo "╚══════════════════════════════════════════════════════════════╝"
+      echo "[codocs] ❌ 以下受管控文件缺少文档更新或有效的跳过声明"
       echo ""
-      echo "以下文档需要更新或 skip 标记："
-      for p in "${uncovered_phase2[@]}"; do echo "  • $p"; done
-      echo ""
-      echo "在 commit message 末尾加跳过标记，例如："
-      echo ""
-      echo "  ## codocs-skip"
+      echo "  未覆盖："
       for p in "${uncovered_phase2[@]}"; do
-        echo "  - $p: <理由>"
+        echo "    $p  →  .codocs/docs/$p.md"
       done
       echo ""
-      echo "或声明文档已更新：doc: updated"
-      echo "或全局跳过：- [all]: <理由>"
+      echo "  请 Read 对应 md 确认是否需要更新，然后："
+      echo "  ❓ 不熟悉 codocs 规范？先读 .codocs/README.md"
+      echo "  - 需要更新 → 修改 md 后 git add，重新提交"
+      echo "  - 确认不需要 → 在 commit message 加 codocs-skip（须写具体理由）："
+      echo "    ## codocs-skip"
+      for p in "${uncovered_phase2[@]}"; do
+        echo "    - .codocs/docs/$p.md: <具体理由>"
+      done
+      if [ "$local_count" -gt 3 ]; then
+        echo "    # 文件较多时也可用: - [all]: <理由>"
+      fi
       echo ""
     else
       rm -f "$PENDING_FLAG" "$PENDING_FILES"
@@ -131,11 +121,13 @@ if [ -f "$PENDING_FLAG" ]; then
   else
     block=true
     echo ""
-    echo "╔══════════════════════════════════════════════════════════════╗"
-    echo "║  codocs: 受管控文件改动，缺少文档更新或跳过标记              ║"
-    echo "╚══════════════════════════════════════════════════════════════╝"
+    echo "[codocs] ❌ 以下受管控文件缺少文档更新或有效的跳过声明"
     echo ""
-    echo "请在 commit message 末尾加跳过标记或声明 doc: updated"
+    echo "  请 Read 对应 md 确认是否需要更新，然后："
+    echo "  - 需要更新 → 修改 md 后 git add，重新提交"
+    echo "  - 确认不需要 → 在 commit message 加 codocs-skip（须写具体理由）："
+    echo "    ## codocs-skip"
+    echo "    - .codocs/docs/<文件路径>.md: <具体理由>"
     echo ""
   fi
 fi
@@ -145,6 +137,7 @@ if [ -f "$PARENT_SYNC_FLAG" ]; then
   if [ -f "$MISSING_PARENTS" ]; then
     uncovered=()
     while IFS= read -r parent_path; do
+      parent_path="${parent_path%$'\r'}"  # strip trailing \r (Windows CRLF)
       covered=false
       for sp in "${skip_paths[@]}"; do
         if [ "$sp" = "$parent_path" ]; then
@@ -157,22 +150,26 @@ if [ -f "$PARENT_SYNC_FLAG" ]; then
 
     if [ ${#uncovered[@]} -gt 0 ]; then
       block=true
+      parent_count=${#uncovered[@]}
       echo ""
-      echo "╔══════════════════════════════════════════════════════════════╗"
-      echo "║  codocs: 父目录 MD 未同步，缺少 skip 标记                    ║"
-      echo "╚══════════════════════════════════════════════════════════════╝"
+      echo "[codocs] ❌ 以下父目录 MD 未随子文档同步更新"
       echo ""
-      echo "以下父目录 MD 需要 skip 标记（或在 commit 中一并 git add）："
-      for p in "${uncovered[@]}"; do echo "  • $p"; done
-      echo ""
-      echo "在 commit message 末尾为每个未同步的父 MD 加标记，例如："
-      echo ""
-      echo "  ## codocs-skip"
+      echo "  未覆盖："
       for p in "${uncovered[@]}"; do
-        echo "  - $p: <理由>"
+        echo "    $p"
       done
       echo ""
-      echo "或全局跳过：- [all]: <理由>"
+      echo "  请 Read 上列 md 确认索引表是否需要更新，然后："
+      echo "  ❓ 不熟悉 codocs 规范？先读 .codocs/README.md"
+      echo "  - 需要更新 → 修改 md 后 git add，重新提交"
+      echo "  - 确认不需要 → 在 commit message 加 codocs-skip（须写具体理由）："
+      echo "    ## codocs-skip"
+      for p in "${uncovered[@]}"; do
+        echo "    - $p: <具体理由>"
+      done
+      if [ "$parent_count" -gt 3 ]; then
+        echo "    # 文件较多时也可用: - [all]: <理由>"
+      fi
       echo ""
     else
       rm -f "$PARENT_SYNC_FLAG" "$MISSING_PARENTS"
@@ -186,6 +183,7 @@ fi
 if [ -f "$DEPS_FLAG" ] && [ -f "$DEPS_FILE" ]; then
   uncovered_deps=()
   while IFS= read -r dep_path; do
+    dep_path="${dep_path%$'\r'}"  # strip trailing \r (Windows CRLF)
     covered=false
     for sp in "${skip_paths[@]}"; do
       if [ "$sp" = "$dep_path" ]; then covered=true; break; fi
@@ -195,19 +193,22 @@ if [ -f "$DEPS_FLAG" ] && [ -f "$DEPS_FILE" ]; then
 
   if [ ${#uncovered_deps[@]} -gt 0 ]; then
     block=true
+    dep_count=${#uncovered_deps[@]}
     echo ""
-    echo "╔══════════════════════════════════════════════════════════════╗"
-    echo "║  codocs: 依赖文档未更新，缺少 skip 标记                      ║"
-    echo "╚══════════════════════════════════════════════════════════════╝"
+    echo "[codocs] ❌ 以下依赖文档未随被依赖文件同步更新"
     echo ""
-    echo "以下文档需要 skip 标记（或 git add）："
-    for p in "${uncovered_deps[@]}"; do echo "  • $p"; done
+    echo "  未覆盖："
+    for p in "${uncovered_deps[@]}"; do echo "    $p"; done
     echo ""
-    echo "示例："
-    echo "  ## codocs-skip"
-    for p in "${uncovered_deps[@]}"; do echo "  - $p: <理由>"; done
-    echo ""
-    echo "或全局跳过：- [all]: <理由>"
+    echo "  请 Read 上列 md 确认是否需要更新，然后："
+    echo "  ❓ 不熟悉 codocs 规范？先读 .codocs/README.md"
+    echo "  - 需要更新 → 修改 md 后 git add，重新提交"
+    echo "  - 确认不需要 → 在 commit message 加 codocs-skip（须写具体理由）："
+    echo "    ## codocs-skip"
+    for p in "${uncovered_deps[@]}"; do echo "    - $p: <具体理由>"; done
+    if [ "$dep_count" -gt 3 ]; then
+      echo "    # 文件较多时也可用: - [all]: <理由>"
+    fi
     echo ""
   fi
 fi
