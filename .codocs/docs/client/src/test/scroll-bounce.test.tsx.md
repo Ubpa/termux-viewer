@@ -1,3 +1,14 @@
+---
+codocs:
+  schema: 1
+  source_type: file
+  source_path: client/src/test/scroll-bounce.test.tsx
+  source_hash: sha256:18bc24531689d3b322f47c7277943610b6b13a8e638009b663cc8c131fbc2b5a
+  explicit_deps: []
+  dep_hash: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+  hash_mode: text-lf-sha256
+  verified_at: '2026-04-14T22:47:40.458176+08:00'
+---
 # scroll-bounce.test.tsx
 
 滚动交互测试：验证文件列表收起/展开不会因内容长度不足产生抖动。

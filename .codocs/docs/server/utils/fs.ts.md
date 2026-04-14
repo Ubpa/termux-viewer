@@ -1,3 +1,14 @@
+---
+codocs:
+  schema: 1
+  source_type: file
+  source_path: server/utils/fs.ts
+  source_hash: sha256:5f548b9a0d9d60632b629d84e9e4fb8487db7b9b172ac9d3a460a933ffd1edf1
+  explicit_deps: []
+  dep_hash: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+  hash_mode: text-lf-sha256
+  verified_at: '2026-04-14T22:47:40.458176+08:00'
+---
 # server/utils/fs.ts
 
 文件系统工具层：路径安全、SSH 检测、扩展名处理，及大小常量。

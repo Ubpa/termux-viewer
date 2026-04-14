@@ -1,3 +1,14 @@
+---
+codocs:
+  schema: 1
+  source_type: dir
+  source_path: server/routes
+  entries_hash: sha256:6cd8784433e045da014eddb7a3291b859439f5792c87c6861ad61dd3693d81f0
+  explicit_deps: []
+  dep_hash: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+  hash_mode: text-lf-sha256
+  verified_at: '2026-04-14T22:47:40.458176+08:00'
+---
 # server/routes
 
 五条 API 路由，每条对应一个独立 Fastify 插件（`FastifyPluginAsync`），注册于 `index.ts`。

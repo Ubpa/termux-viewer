@@ -1,3 +1,14 @@
+---
+codocs:
+  schema: 1
+  source_type: file
+  source_path: client/src/components/Preview.tsx
+  source_hash: sha256:51a3c36c2fe82e534edf054392a9ab82973d7c5ca4aa56701135c74f0a9b9365
+  explicit_deps: []
+  dep_hash: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+  hash_mode: text-lf-sha256
+  verified_at: '2026-04-14T22:47:40.458176+08:00'
+---
 # Preview.tsx
 
 根据文件类型渲染文件内容，分五路：image / markdown / code / text / binary。

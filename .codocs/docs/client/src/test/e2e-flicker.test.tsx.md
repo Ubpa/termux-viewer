@@ -1,3 +1,14 @@
+---
+codocs:
+  schema: 1
+  source_type: file
+  source_path: client/src/test/e2e-flicker.test.tsx
+  source_hash: sha256:0b2ea34797e29bbbcacd0d77ccf8d1bb059660383b783aee155dbd0adc01cf11
+  explicit_deps: []
+  dep_hash: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+  hash_mode: text-lf-sha256
+  verified_at: '2026-04-14T22:47:40.458176+08:00'
+---
 # e2e-flicker.test.tsx
 
 MutationObserver 端到端闪烁检测——最严格的闪烁测试。

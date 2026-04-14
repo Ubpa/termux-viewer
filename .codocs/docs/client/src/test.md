@@ -1,3 +1,14 @@
+---
+codocs:
+  schema: 1
+  source_type: dir
+  source_path: client/src/test
+  entries_hash: sha256:13426fdc6c068c250f0988ae716a03d9b08b38762500148c0e59a00d073fe8d2
+  explicit_deps: []
+  dep_hash: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+  hash_mode: text-lf-sha256
+  verified_at: '2026-04-14T22:47:40.458176+08:00'
+---
 # test
 
 vitest + @testing-library/react 测试目录，覆盖 SSE 闪烁 bug 和滚动交互。

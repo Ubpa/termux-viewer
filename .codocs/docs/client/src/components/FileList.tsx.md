@@ -1,3 +1,14 @@
+---
+codocs:
+  schema: 1
+  source_type: file
+  source_path: client/src/components/FileList.tsx
+  source_hash: sha256:d1dca409f14a00fdf53e36fbb971a585f7451ab2a808439ffa03410cb813beb1
+  explicit_deps: []
+  dep_hash: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+  hash_mode: text-lf-sha256
+  verified_at: '2026-04-14T22:47:40.458176+08:00'
+---
 # FileList.tsx
 
 展示目录文件列表。目录项点击触发导航，文件项点击触发选中预览，选中项背景高亮（`#313244`）。

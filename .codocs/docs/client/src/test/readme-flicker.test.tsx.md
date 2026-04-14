@@ -1,3 +1,14 @@
+---
+codocs:
+  schema: 1
+  source_type: file
+  source_path: client/src/test/readme-flicker.test.tsx
+  source_hash: sha256:974cb16e2a938d02707ba7700d0412f129d16664246bb126100817f2f6e82c2a
+  explicit_deps: []
+  dep_hash: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+  hash_mode: text-lf-sha256
+  verified_at: '2026-04-14T22:47:40.458176+08:00'
+---
 # readme-flicker.test.tsx
 
 复现 SSE 触发导致 Preview 闪烁"加载中..."的 bug。这是第一批测试，用传统的固定时间点断言。
