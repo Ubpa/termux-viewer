@@ -5,10 +5,14 @@
 ## 功能
 
 - 📁 目录浏览，按文件夹/文件分类排序
-- 👁️ 文件预览：代码高亮、Markdown 渲染、图片查看
+- 👁️ 文件预览：代码高亮、Markdown 渲染（GFM 表格/任务列表）、图片查看
 - 🔄 实时更新：目录有变化时自动刷新，无需手动操作
 - 🔒 安全限制：禁止路径穿越（`../`）和访问 `.ssh/` 目录
 - 📱 移动端优化：上 1/3 文件列表、下 2/3 预览的垂直分栏布局
+- 🗂️ 文件列表折叠/展开：上滑展开、下滑收起，预览区顶部上拉时自动展开
+- 🖱️ 长按菜单：复制文件路径、删除文件
+- 📖 自动预览：进入目录时自动展示 README（如存在）
+- 🔗 GitHub 链接：若仓库有 remote，面包屑行显示跳转按钮
 
 ## 快速开始
 
@@ -39,7 +43,7 @@ Vite 开发服务器在 `http://localhost:5173`，API 代理到 `http://localhos
 | 后端 | Node.js + TypeScript + Fastify |
 | 前端 | React 18 + TypeScript + Vite |
 | 代码高亮 | highlight.js |
-| Markdown | marked + DOMPurify |
+| Markdown | react-markdown + remark-gfm |
 | 实时推送 | SSE（Server-Sent Events）+ `fs.watch` |
 
 ## 目录结构
@@ -56,6 +60,8 @@ termux-viewer/
 │       └── fs.ts         # 安全路径解析工具
 └── client/
     └── src/
+        ├── App.tsx
+        ├── types.ts
         ├── components/
         │   ├── FileList.tsx
         │   ├── Preview.tsx
@@ -65,6 +71,13 @@ termux-viewer/
         └── utils/
             └── fileType.ts
 ```
+
+## 限制
+
+| 项目 | 限制 |
+|------|------|
+| 文本文件 | 最大 1 MB，超出截断为前 1000 行 |
+| 图片文件 | 最大 10 MB |
 
 ## API
 
