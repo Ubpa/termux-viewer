@@ -3,11 +3,11 @@ codocs:
   schema: 1
   source_type: file
   source_path: client/src/utils/fileType.ts
-  source_hash: sha256:c0c19e49157081009544c1e669822eb2fe5135f498e2f66bbc7ec97d13885164
+  source_hash: sha256:5e2d8f1cb1eaa5c0178e6e8e0cd6c45ec456a4b2dd6dacafd66460c2daf73f86
   explicit_deps: []
   dep_hash: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
   hash_mode: text-lf-sha256
-  verified_at: '2026-04-15T02:52:12.612308+08:00'
+  verified_at: '2026-04-15T02:56:04.786263+08:00'
 ---
 # fileType.ts
 

@@ -21,9 +21,10 @@ export function getRenderType(ext: string, name?: string): RenderType {
   if (MARKDOWN_EXTS.has(e)) return 'markdown'
   if (IMAGE_EXTS.has(e)) return 'image'
   if (CODE_EXTS.has(e)) return 'code'
-  if (TEXT_EXTS.has(e)) return 'text'
-  // Named files with well-known types: CMakeLists.txt
+  // Named files with well-known types must be checked before TEXT_EXTS,
+  // since their extension (e.g. .txt) would otherwise match first.
   if (name && name.toLowerCase() === 'cmakelists.txt') return 'code'
+  if (TEXT_EXTS.has(e)) return 'text'
   // Dotfiles with no extension: e.g. .gitignore, .bashrc, .zshrc, .bash, .zsh
   // path.extname('.gitignore') === '' so ext-based lookup always misses them.
   if (name && name.startsWith('.') && !name.slice(1).includes('.')) return 'code'
