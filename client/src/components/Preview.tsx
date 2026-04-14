@@ -18,6 +18,7 @@ export function Preview({ selectedFile, onScrollDown, onScrollUpAtTop }: Preview
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [imgError, setImgError] = useState<string | null>(null)
+  const [detectedLang, setDetectedLang] = useState<string | undefined>(undefined)
   const lastScrollTop = useRef(0)
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -41,6 +42,7 @@ export function Preview({ selectedFile, onScrollDown, onScrollUpAtTop }: Preview
 
   useEffect(() => {
     setImgError(null)   // always clear image-specific error on file change
+    setDetectedLang(undefined)
 
     if (!selectedFile) {
       setContent('')
@@ -72,6 +74,7 @@ export function Preview({ selectedFile, onScrollDown, onScrollUpAtTop }: Preview
             setError('不支持预览此文件类型')
           } else {
             setContent(data.content)
+            if (data.language) setDetectedLang(data.language)
           }
           setLoading(false)
         }
@@ -126,6 +129,13 @@ export function Preview({ selectedFile, onScrollDown, onScrollUpAtTop }: Preview
     )
   }
 
+  if (renderType === 'unknown' && loading) {
+    return container(
+      <span>加载中...</span>,
+      { display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6c7086' }
+    )
+  }
+
   if (renderType === 'binary') {
     return container(
       <span>🚫 不支持预览此文件类型</span>,
@@ -155,9 +165,9 @@ export function Preview({ selectedFile, onScrollDown, onScrollUpAtTop }: Preview
     )
   }
 
-  if (renderType === 'code') {
-    const lang = selectedFile.ext.replace('.', '')
-    const highlighted = hljs.getLanguage(lang)
+  if (renderType === 'code' || (renderType === 'unknown' && content && detectedLang !== 'plaintext')) {
+    const lang = detectedLang ?? selectedFile.ext.replace('.', '')
+    const highlighted = (lang && lang !== 'plaintext' && hljs.getLanguage(lang))
       ? hljs.highlight(content, { language: lang }).value
       : hljs.highlightAuto(content).value
 
