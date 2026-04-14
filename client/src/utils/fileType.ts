@@ -6,7 +6,7 @@ const CODE_EXTS = new Set([
   '.ts', '.tsx', '.js', '.jsx', '.py', '.sh', '.json',
   '.yaml', '.yml', '.toml', '.css', '.html', '.xml',
   '.c', '.cpp', '.h', '.hpp', '.hxx', '.inl', '.go', '.rs', '.java', '.rb', '.php',
-  '.ini', '.conf', '.sql', '.dockerfile', '.makefile', '.ps1', '.psm1', '.psd1',
+  '.ini', '.conf', '.sql', '.dockerfile', '.makefile', '.ps1', '.psm1', '.psd1', '.cmake',
 ])
 const TEXT_EXTS = new Set(['.txt', '.log', '.env', '.csv'])
 
@@ -22,6 +22,8 @@ export function getRenderType(ext: string, name?: string): RenderType {
   if (IMAGE_EXTS.has(e)) return 'image'
   if (CODE_EXTS.has(e)) return 'code'
   if (TEXT_EXTS.has(e)) return 'text'
+  // Named files with well-known types: CMakeLists.txt
+  if (name && name.toLowerCase() === 'cmakelists.txt') return 'code'
   // Dotfiles with no extension: e.g. .gitignore, .bashrc, .zshrc, .bash, .zsh
   // path.extname('.gitignore') === '' so ext-based lookup always misses them.
   if (name && name.startsWith('.') && !name.slice(1).includes('.')) return 'code'

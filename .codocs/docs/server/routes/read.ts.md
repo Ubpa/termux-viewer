@@ -3,11 +3,11 @@ codocs:
   schema: 1
   source_type: file
   source_path: server/routes/read.ts
-  source_hash: sha256:568f85b0bf09bf0fd84b0f104eb7d48ba909767cac75d54524be34cf3508798e
+  source_hash: sha256:1f664e13542ba031f9ebce74c013665480b3adeadeac6714d53deb1715fc490b
   explicit_deps: []
   dep_hash: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
   hash_mode: text-lf-sha256
-  verified_at: '2026-04-14T23:22:48.979206+08:00'
+  verified_at: '2026-04-15T02:52:12.762258+08:00'
 ---
 # server/routes/read.ts
 

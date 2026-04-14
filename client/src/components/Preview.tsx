@@ -166,7 +166,8 @@ export function Preview({ selectedFile, onScrollDown, onScrollUpAtTop }: Preview
   }
 
   if (renderType === 'code' || (renderType === 'unknown' && content && detectedLang !== 'plaintext')) {
-    const lang = detectedLang ?? selectedFile.ext.replace('.', '')
+    const nameLang = selectedFile.name.toLowerCase() === 'cmakelists.txt' ? 'cmake' : undefined
+    const lang = nameLang ?? detectedLang ?? selectedFile.ext.replace('.', '')
     const highlighted = (lang && lang !== 'plaintext' && hljs.getLanguage(lang))
       ? hljs.highlight(content, { language: lang }).value
       : hljs.highlightAuto(content).value

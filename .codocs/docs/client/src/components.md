@@ -3,11 +3,12 @@ codocs:
   schema: 1
   source_type: dir
   source_path: client/src/components
-  entries_hash: sha256:0fa07cbc1b55067916c69f994cd694d03420b3ea47046127a94fc0e0621698d5
+  entries_hash: sha256:a2bab2f2895d7f6f3d94483c6c60195dd47669fe68521013352a07a28e044d15
   explicit_deps: []
   dep_hash: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
   hash_mode: text-lf-sha256
-  verified_at: '2026-04-14T22:47:40.458176+08:00'
+  verified_at: '2026-04-15T02:52:28.064238+08:00'
+  source_hash: null
 ---
 # components
 
