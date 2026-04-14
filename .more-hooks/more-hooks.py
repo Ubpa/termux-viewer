@@ -70,8 +70,12 @@ fi
 # Execute scripts in sorted order, passing all args through
 for script in $(ls "$HOOKS_D" | sort); do
   script_path="$HOOKS_D/$script"
-  if [ ! -f "$script_path" ] || [ ! -x "$script_path" ]; then
+  if [ ! -f "$script_path" ]; then
     continue
+  fi
+  if [ ! -x "$script_path" ]; then
+    echo "[more-hooks] WARNING: $script_path is not executable, fixing with chmod +x" >&2
+    chmod +x "$script_path"
   fi
   "$script_path" "$@"
   rc=$?
