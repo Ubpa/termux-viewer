@@ -11,6 +11,7 @@ export interface ReadResponse {
   type: 'text' | 'binary'
   content: string
   mimeType: string
+  language?: string  // set by server for no-extension files with shebang
 }
 
 export interface ErrorResponse {
@@ -18,4 +19,4 @@ export interface ErrorResponse {
   code: number
 }
 
-export type RenderType = 'markdown' | 'code' | 'image' | 'text' | 'binary'
+export type RenderType = 'markdown' | 'code' | 'image' | 'text' | 'binary' | 'unknown'

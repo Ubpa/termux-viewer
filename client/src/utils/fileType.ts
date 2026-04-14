@@ -25,6 +25,9 @@ export function getRenderType(ext: string, name?: string): RenderType {
   // Dotfiles with no extension: e.g. .gitignore, .bashrc, .zshrc, .bash, .zsh
   // path.extname('.gitignore') === '' so ext-based lookup always misses them.
   if (name && name.startsWith('.') && !name.slice(1).includes('.')) return 'code'
+  // No extension, non-dotfile (e.g. pre-commit, Makefile, configure):
+  // let the server sniff and decide — return 'unknown' so Preview always fetches
+  if (ext === '' && name && !name.startsWith('.')) return 'unknown'
   return 'binary'
 }
 
@@ -43,5 +46,7 @@ export function fileIcon(entry: { isDir: boolean; ext: string; name: string }): 
   if (CODE_EXTS.has(e)) return '📄'
   // Dotfile with no extension
   if (entry.name.startsWith('.') && !entry.name.slice(1).includes('.')) return '📄'
+  // No-extension non-dotfile (unknown until server sniffs)
+  if (entry.ext === '' && !entry.name.startsWith('.')) return '📄'
   return '📃'
 }
