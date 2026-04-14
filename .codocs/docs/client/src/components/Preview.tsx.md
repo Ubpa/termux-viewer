@@ -3,11 +3,11 @@ codocs:
   schema: 1
   source_type: file
   source_path: client/src/components/Preview.tsx
-  source_hash: sha256:fbaa4f296549fa437da93b499f7f5e10d4a0f1814bad480b176ade4e5c2d774f
+  source_hash: sha256:a3cdbaf8c17ba53842e0321724763433523a01ade2280782cecd3f3b7139952f
   explicit_deps: []
   dep_hash: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
   hash_mode: text-lf-sha256
-  verified_at: '2026-04-14T22:47:40.458176+08:00'
+  verified_at: '2026-04-14T23:39:59.228375+08:00'
 ---
 # Preview.tsx
 
