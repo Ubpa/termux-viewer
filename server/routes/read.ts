@@ -5,6 +5,70 @@ import path from 'path'
 import mime from 'mime-types'
 import { resolveSafePath, isSshPath, isImage, getExt, MAX_TEXT_BYTES, MAX_IMAGE_BYTES, HOME } from '../utils/fs.js'
 
+/**
+ * Read a text file, truncating to 1000 lines if it exceeds MAX_TEXT_BYTES.
+ */
+async function readTextContent(absolutePath: string, size: number): Promise<string> {
+  if (size > MAX_TEXT_BYTES) {
+    const buf = Buffer.alloc(MAX_TEXT_BYTES)
+    const fh = await fs.open(absolutePath, 'r')
+    try {
+      await fh.read(buf, 0, MAX_TEXT_BYTES, 0)
+    } finally {
+      await fh.close()
+    }
+    return buf.toString('utf-8').split('\n').slice(0, 1000).join('\n') + '\n\n[--- 文件过大，仅显示前 1000 行 ---]'
+  }
+  return fs.readFile(absolutePath, 'utf-8')
+}
+
+/**
+ * Sniff the type of a no-extension, non-dotfile by examining its first 512 bytes.
+ * Returns { isBinary: true } for binary files, or { isBinary: false, language? } for text.
+ */
+function sniffFileType(buf: Buffer): { isBinary: boolean; language?: string } {
+  // Step 1: Magic bytes
+  if (buf.length >= 4 && buf[0] === 0x7f && buf[1] === 0x45 && buf[2] === 0x4c && buf[3] === 0x46) {
+    return { isBinary: true } // ELF
+  }
+  if (buf.length >= 4 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) {
+    return { isBinary: true } // PNG
+  }
+  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) {
+    return { isBinary: true } // JPEG
+  }
+  if (buf.length >= 4 && buf.slice(0, 4).toString('ascii') === '%PDF') {
+    return { isBinary: true } // PDF
+  }
+  if (buf.length >= 4 && buf[0] === 0x50 && buf[1] === 0x4b && buf[2] === 0x03 && buf[3] === 0x04) {
+    return { isBinary: true } // ZIP/APK/JAR
+  }
+  if (buf.length >= 2 && buf[0] === 0x1f && buf[1] === 0x8b) {
+    return { isBinary: true } // gzip
+  }
+
+  // Step 2: Null byte sniffer — text files never contain \x00
+  for (let i = 0; i < buf.length; i++) {
+    if (buf[i] === 0x00) return { isBinary: true }
+  }
+
+  // Step 3: Shebang detection
+  const head = buf.toString('utf-8', 0, Math.min(buf.length, 200))
+  if (head.startsWith('#!')) {
+    const firstLine = head.split('\n')[0]
+    if (/bash/.test(firstLine)) return { isBinary: false, language: 'bash' }
+    if (/zsh/.test(firstLine)) return { isBinary: false, language: 'bash' }
+    if (/sh/.test(firstLine)) return { isBinary: false, language: 'bash' }
+    if (/python/.test(firstLine)) return { isBinary: false, language: 'python' }
+    if (/node/.test(firstLine)) return { isBinary: false, language: 'javascript' }
+    if (/ruby/.test(firstLine)) return { isBinary: false, language: 'ruby' }
+    if (/perl/.test(firstLine)) return { isBinary: false, language: 'perl' }
+    return { isBinary: false, language: 'plaintext' }
+  }
+
+  return { isBinary: false, language: 'plaintext' }
+}
+
 export async function readRoute(app: FastifyInstance) {
   app.get('/api/read', async (request, reply) => {
     const { path: relPath } = request.query as { path?: string }
@@ -64,18 +128,30 @@ export async function readRoute(app: FastifyInstance) {
     ])
 
     if (TEXT_EXTS.has(ext) || mimeType.startsWith('text/') || isDotfile) {
-      let content: string
-      if (stat.size > MAX_TEXT_BYTES) {
-        const buf = Buffer.alloc(MAX_TEXT_BYTES)
-        const fh = await fs.open(absolutePath, 'r')
-        await fh.read(buf, 0, MAX_TEXT_BYTES, 0)
-        await fh.close()
-        const lines = buf.toString('utf-8').split('\n').slice(0, 1000)
-        content = lines.join('\n') + '\n\n[--- 文件过大，仅显示前 1000 行 ---]'
-      } else {
-        content = await fs.readFile(absolutePath, 'utf-8')
-      }
+      const content = await readTextContent(absolutePath, stat.size)
       return reply.send({ type: 'text', content, mimeType })
+    }
+
+    // No-extension, non-dotfile: sniff first 512 bytes
+    if (ext === '' && !path.basename(absolutePath).startsWith('.')) {
+      const sniffSize = Math.min(stat.size, 512)
+      const sniffBuf = Buffer.alloc(sniffSize)
+      const fh = await fs.open(absolutePath, 'r')
+      try {
+        await fh.read(sniffBuf, 0, sniffSize, 0)
+      } finally {
+        await fh.close()
+      }
+
+      const sniff = sniffFileType(sniffBuf)
+      if (!sniff.isBinary) {
+        const content = await readTextContent(absolutePath, stat.size)
+        const response: { type: string; content: string; mimeType: string; language?: string } = {
+          type: 'text', content, mimeType,
+        }
+        if (sniff.language) response.language = sniff.language
+        return reply.send(response)
+      }
     }
 
     // Binary / unknown
