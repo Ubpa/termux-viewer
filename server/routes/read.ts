@@ -6,10 +6,11 @@ import mime from 'mime-types'
 import { resolveSafePath, isSshPath, isImage, getExt, MAX_TEXT_BYTES, MAX_IMAGE_BYTES, HOME } from '../utils/fs.js'
 
 /**
- * Read a text file, truncating to 1000 lines if it exceeds MAX_TEXT_BYTES.
+ * Read a text file, optionally truncating to 1000 lines if it exceeds MAX_TEXT_BYTES.
+ * Returns { content, truncated } so callers can surface a "force load" option.
  */
-async function readTextContent(absolutePath: string, size: number): Promise<string> {
-  if (size > MAX_TEXT_BYTES) {
+async function readTextContent(absolutePath: string, size: number, force: boolean): Promise<{ content: string; truncated: boolean }> {
+  if (!force && size > MAX_TEXT_BYTES) {
     const buf = Buffer.alloc(MAX_TEXT_BYTES)
     const fh = await fs.open(absolutePath, 'r')
     try {
@@ -17,9 +18,11 @@ async function readTextContent(absolutePath: string, size: number): Promise<stri
     } finally {
       await fh.close()
     }
-    return buf.toString('utf-8').split('\n').slice(0, 1000).join('\n') + '\n\n[--- 文件过大，仅显示前 1000 行 ---]'
+    const content = buf.toString('utf-8').split('\n').slice(0, 1000).join('\n')
+    return { content, truncated: true }
   }
-  return fs.readFile(absolutePath, 'utf-8')
+  const content = await fs.readFile(absolutePath, 'utf-8')
+  return { content, truncated: false }
 }
 
 /**
@@ -71,7 +74,8 @@ function sniffFileType(buf: Buffer): { isBinary: boolean; language?: string } {
 
 export async function readRoute(app: FastifyInstance) {
   app.get('/api/read', async (request, reply) => {
-    const { path: relPath } = request.query as { path?: string }
+    const { path: relPath, force: forceParam } = request.query as { path?: string; force?: string }
+    const force = forceParam === '1' || forceParam === 'true'
 
     if (!relPath) {
       return reply.code(400).send({ error: 'path parameter required', code: 400 })
@@ -106,7 +110,7 @@ export async function readRoute(app: FastifyInstance) {
 
     // Images: stream binary directly
     if (isImage(ext)) {
-      if (stat.size > MAX_IMAGE_BYTES) {
+      if (!force && stat.size > MAX_IMAGE_BYTES) {
         return reply.code(413).send({ error: 'Image too large (max 10MB)', code: 413 })
       }
       reply.header('Content-Type', mimeType)
@@ -128,8 +132,8 @@ export async function readRoute(app: FastifyInstance) {
     ])
 
     if (TEXT_EXTS.has(ext) || mimeType.startsWith('text/') || isDotfile) {
-      const content = await readTextContent(absolutePath, stat.size)
-      return reply.send({ type: 'text', content, mimeType })
+      const { content, truncated } = await readTextContent(absolutePath, stat.size, force)
+      return reply.send({ type: 'text', content, mimeType, truncated })
     }
 
     // No-extension, non-dotfile: sniff first 512 bytes
@@ -145,9 +149,9 @@ export async function readRoute(app: FastifyInstance) {
 
       const sniff = sniffFileType(sniffBuf)
       if (!sniff.isBinary) {
-        const content = await readTextContent(absolutePath, stat.size)
-        const response: { type: string; content: string; mimeType: string; language?: string } = {
-          type: 'text', content, mimeType,
+        const { content, truncated } = await readTextContent(absolutePath, stat.size, force)
+        const response: { type: string; content: string; mimeType: string; language?: string; truncated: boolean } = {
+          type: 'text', content, mimeType, truncated,
         }
         if (sniff.language) response.language = sniff.language
         return reply.send(response)

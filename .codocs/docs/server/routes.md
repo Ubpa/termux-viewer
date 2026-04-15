@@ -3,11 +3,11 @@ codocs:
   schema: 1
   source_type: dir
   source_path: server/routes
-  entries_hash: sha256:31048814a88d3fc4763c9097abf5fd3a90dcde063f8ed738a5f2ddd1e23f49a8
+  entries_hash: sha256:4cca0b0189b10a09a0f795b1ed057911ff356f122705a724f59137dcde7fa24d
   explicit_deps: []
   dep_hash: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
   hash_mode: text-lf-sha256
-  verified_at: '2026-04-14T23:23:04.765789+08:00'
+  verified_at: '2026-04-15T15:28:34.973367+08:00'
   source_hash: null
 ---
 # server/routes

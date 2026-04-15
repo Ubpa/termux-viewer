@@ -7,6 +7,8 @@ import 'highlight.js/styles/github-dark.css'
 import type { FileEntry, ReadResponse } from '../types'
 import { getRenderType } from '../utils/fileType'
 
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024 // must match server constant
+
 interface PreviewProps {
   selectedFile: FileEntry | null
   onScrollDown?: () => void
@@ -19,6 +21,9 @@ export function Preview({ selectedFile, onScrollDown, onScrollUpAtTop }: Preview
   const [error, setError] = useState<string | null>(null)
   const [imgError, setImgError] = useState<string | null>(null)
   const [detectedLang, setDetectedLang] = useState<string | undefined>(undefined)
+  const [truncated, setTruncated] = useState(false)
+  // Track which file path has been force-loaded; auto-resets on file change.
+  const [forceLoadPath, setForceLoadPath] = useState<string | null>(null)
   const lastScrollTop = useRef(0)
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -43,6 +48,9 @@ export function Preview({ selectedFile, onScrollDown, onScrollUpAtTop }: Preview
   useEffect(() => {
     setImgError(null)   // always clear image-specific error on file change
     setDetectedLang(undefined)
+    setTruncated(false)
+    // Reset force state when navigating to a different file
+    setForceLoadPath(prev => (prev === selectedFile?.path ? prev : null))
 
     if (!selectedFile) {
       setContent('')
@@ -58,12 +66,15 @@ export function Preview({ selectedFile, onScrollDown, onScrollUpAtTop }: Preview
       return
     }
 
+    const isForced = forceLoadPath === selectedFile.path
+
     let cancelled = false
     setLoading(true)
     setError(null)
     setContent('')
 
-    fetch(`/api/read?path=${encodeURIComponent(selectedFile.path)}`)
+    const url = `/api/read?path=${encodeURIComponent(selectedFile.path)}${isForced ? '&force=1' : ''}`
+    fetch(url)
       .then((res) => {
         if (!res.ok) return res.json().then((e: any) => { throw new Error(e.error ?? `HTTP ${res.status}`) })
         return res.json()
@@ -74,6 +85,7 @@ export function Preview({ selectedFile, onScrollDown, onScrollUpAtTop }: Preview
             setError('不支持预览此文件类型')
           } else {
             setContent(data.content)
+            setTruncated(data.truncated ?? false)
             if (data.language) setDetectedLang(data.language)
           }
           setLoading(false)
@@ -87,7 +99,7 @@ export function Preview({ selectedFile, onScrollDown, onScrollUpAtTop }: Preview
       })
 
     return () => { cancelled = true }
-  }, [selectedFile?.path])
+  }, [selectedFile?.path, forceLoadPath])
 
   const containerStyle: CSSProperties = {
     flex: 1,
@@ -105,6 +117,37 @@ export function Preview({ selectedFile, onScrollDown, onScrollUpAtTop }: Preview
     </div>
   )
 
+  const truncationBanner = truncated && selectedFile ? (
+    <div style={{
+      margin: '12px 0 0 0',
+      padding: '8px 12px',
+      background: '#1e1e2e',
+      border: '1px solid #45475a',
+      borderRadius: '6px',
+      color: '#a6adc8',
+      fontSize: '13px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+    }}>
+      <span>⚠️ 文件过大，仅显示前 1000 行</span>
+      <button
+        onClick={() => setForceLoadPath(selectedFile.path)}
+        style={{
+          padding: '3px 10px',
+          background: '#313244',
+          border: '1px solid #585b70',
+          borderRadius: '4px',
+          color: '#cdd6f4',
+          cursor: 'pointer',
+          fontSize: '13px',
+        }}
+      >
+        强制加载完整文件
+      </button>
+    </div>
+  ) : null
+
   if (!selectedFile) {
     return container(
       <span style={{ color: '#6c7086' }}>点击上方文件预览内容</span>,
@@ -115,10 +158,40 @@ export function Preview({ selectedFile, onScrollDown, onScrollUpAtTop }: Preview
   const renderType = getRenderType(selectedFile.ext, selectedFile.name)
 
   if (renderType === 'image') {
+    const isForced = forceLoadPath === selectedFile.path
+    const isOversize = selectedFile.size > MAX_IMAGE_BYTES
+
+    if (isOversize && !isForced) {
+      return container(
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', color: '#a6adc8' }}>
+          <span>⚠️ 图片过大（{(selectedFile.size / 1024 / 1024).toFixed(1)} MB，限制 10 MB）</span>
+          <button
+            onClick={() => setForceLoadPath(selectedFile.path)}
+            style={{
+              padding: '6px 16px',
+              background: '#313244',
+              border: '1px solid #585b70',
+              borderRadius: '4px',
+              color: '#cdd6f4',
+              cursor: 'pointer',
+              fontSize: '14px',
+            }}
+          >
+            强制加载完整图片
+          </button>
+        </div>,
+        { display: 'flex', alignItems: 'center', justifyContent: 'center' }
+      )
+    }
+
+    const src = isOversize && isForced
+      ? `/api/read?path=${encodeURIComponent(selectedFile.path)}&force=1`
+      : `/api/read?path=${encodeURIComponent(selectedFile.path)}`
+
     return container(
       <>
         <img
-          src={`/api/read?path=${encodeURIComponent(selectedFile.path)}`}
+          src={src}
           alt={selectedFile.name}
           style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
           onError={() => setImgError('图片加载失败（可能无权限访问）')}
@@ -159,9 +232,12 @@ export function Preview({ selectedFile, onScrollDown, onScrollUpAtTop }: Preview
 
   if (renderType === 'markdown') {
     return container(
-      <div className="markdown-body">
-        <ReactMarkdown remarkPlugins={[remarkGfm, remarkFrontmatter]}>{content}</ReactMarkdown>
-      </div>
+      <>
+        <div className="markdown-body">
+          <ReactMarkdown remarkPlugins={[remarkGfm, remarkFrontmatter]}>{content}</ReactMarkdown>
+        </div>
+        {truncationBanner}
+      </>
     )
   }
 
@@ -179,20 +255,25 @@ export function Preview({ selectedFile, onScrollDown, onScrollUpAtTop }: Preview
       .join('\n')
 
     return container(
-      <pre style={{ margin: 0, padding: '16px', overflowX: 'auto' }}>
-        <code
-          style={{ fontSize: '15px', fontFamily: 'monospace' }}
-          dangerouslySetInnerHTML={{ __html: lineNumbersHtml }}
-        />
-      </pre>,
+      <>
+        <pre style={{ margin: 0, padding: '16px', overflowX: 'auto' }}>
+          <code
+            style={{ fontSize: '15px', fontFamily: 'monospace' }}
+            dangerouslySetInnerHTML={{ __html: lineNumbersHtml }}
+          />
+        </pre>
+        {truncationBanner && <div style={{ padding: '0 16px 16px' }}>{truncationBanner}</div>}
+      </>,
       { padding: 0 }
     )
   }
 
   // text
   return container(
-    <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'monospace', fontSize: '15px' }}>
-      {content}
-    </pre>
-  )
-}
+    <>
+      <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'monospace', fontSize: '15px' }}>
+        {content}
+      </pre>
+      {truncationBanner}
+    </>
+  )}
